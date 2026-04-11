@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import cv2
 import skimage.io as ski
 
@@ -7,11 +7,24 @@ import skimage.io as ski
 #blad liczyc z biblioteki np sciki learn
 #bresenham własny
 #TODO funckje do paddingu i unpaddingu (zapamietywac oryginalne wymiary obrazu)
-import numpy as np
 
-# --- Twój algorytm Bresenhama ---
+
 
 def plot_line_low(x0: int, y0: int, x1: int, y1: int) -> list[tuple[int, int]]:
+    """
+    Finds coordinates for line if OX is deritive axis
+    
+    :param x0: Discrite x coordinate for the start
+    :type x0: int
+    :param y0: Discrite y coordinate for the start
+    :type y0: int
+    :param x1: Discrite x coordinate for the end
+    :type x1: int
+    :param y1: Discrite y coordinate for the end
+    :type y1: int
+    :return: List of coordinates the line goes through
+    :rtype: list[tuple[int, int]]
+    """
     line_coords: list[tuple[int, int]] = []
     dx: int = x1 - x0 
     dy: int = y1 - y0 
@@ -33,6 +46,20 @@ def plot_line_low(x0: int, y0: int, x1: int, y1: int) -> list[tuple[int, int]]:
     return line_coords
 
 def plot_line_high(x0:int, y0:int, x1:int, y1:int) -> list[tuple[int, int]]:
+    """
+    Finds coordinates for line if OY is deritive axis
+    
+    :param x0: Discrite x coordinate for the start
+    :type x0: int
+    :param y0: Discrite y coordinate for the start
+    :type y0: int
+    :param x1: Discrite x coordinate for the end
+    :type x1: int
+    :param y1: Discrite y coordinate for the end
+    :type y1: int
+    :return: List of coordinates the line goes through
+    :rtype: list[tuple[int, int]]
+    """
     line_coords: list[tuple[int, int]] = []
     dx: int = x1 - x0
     dy: int = y1 - y0
@@ -55,6 +82,20 @@ def plot_line_high(x0:int, y0:int, x1:int, y1:int) -> list[tuple[int, int]]:
     return line_coords
 
 def bresenham_algorith(x0: int, y0: int, x1: int, y1: int) -> list[tuple[int, int]]:
+    """
+    Finds coordinates for line
+    
+    :param x0: Discrite x coordinate for the start
+    :type x0: int
+    :param y0: Discrite y coordinate for the start
+    :type y0: int
+    :param x1: Discrite x coordinate for the end
+    :type x1: int
+    :param y1: Discrite y coordinate for the end
+    :type y1: int
+    :return: List of coordinates the line goes through
+    :rtype: list[tuple[int, int]]
+    """
     if abs(y1 - y0) < abs(x1 - x0):
         if x0 > x1:
             return plot_line_low(x0=x1, y0=y1, x1=x0, y1=y0)
@@ -64,10 +105,15 @@ def bresenham_algorith(x0: int, y0: int, x1: int, y1: int) -> list[tuple[int, in
     return plot_line_high(x0, y0, x1, y1)
 
 
-def prepare_padded_image(image: np.ndarray):
+def prepare_padded_image(image: np.ndarray)->tuple[np.ndarray,int,tuple[int,int]]:
+    
     """
-    1. Tworzy kwadratowy obraz o boku równym dłuższemu bokowi oryginału.
-    2. Oblicza promień r jako połowę przekątnej kwadratu, zaokrągloną w górę.
+    Add padding to the given image
+    
+    :param image: Image to be padded
+    :type image: np.ndarray
+    :return: Tuple which contains the padded image, the radius and the input image's shape
+    :rtype: tuple[ndarray, int,tuple[int,int]]
     """
     height, width = image.shape
     max_side = max(height, width)
@@ -83,11 +129,11 @@ def prepare_padded_image(image: np.ndarray):
     diagonal = np.sqrt(2 * (max_side**2))
     r = int(np.ceil(diagonal / 2))
 
-    return padded_image, r
+    return padded_image, r,(height,width)
 
-def radon_transform(image: np.ndarray, n_detectors: int, phi_angle: float, n_steps: int) -> tuple[list[np.ndarray], np.ndarray]:
+def radon_transform(image: np.ndarray, n_detectors: int, phi_angle: float, n_steps: int) -> tuple[list[np.ndarray], np.ndarray,int]:
     # Przygotowanie obrazu i promienia r
-    padded_img, r = prepare_padded_image(image)
+    padded_img, r,(org_height,org_width) = prepare_padded_image(image)
 
     heighy, width = padded_img.shape
     center_x, center_y = width // 2, heighy // 2
@@ -128,15 +174,50 @@ def radon_transform(image: np.ndarray, n_detectors: int, phi_angle: float, n_ste
         
         intermediate_sinograms.append(sinogram.copy()/np.max(sinogram))
 
-    return intermediate_sinograms, sinogram/np.max(sinogram)
+    return intermediate_sinograms, sinogram/np.max(sinogram),r,(org_height,org_width)
+
+
+def back_projection(final_sinogram: np.ndarray, n_detectors: int, phi_angle: float, n_steps: int,radius:int,original_img_height:int,original_img_width:int,filtering:bool=True)->tuple[list[np.ndarray], np.ndarray]:
+    height, width = original_img_height,original_img_width
+    center_x, center_y = width // 2, height // 2
+
+    reconstructed = np.zeros((original_img_height, original_img_width))
+    intermediate_reconstructed_img = []
+    # Kąty obrotu alfa
+    alphas = np.linspace(0, 2 * np.pi, n_steps, endpoint=False)
+
+
+    for step_idx, alpha in enumerate(alphas):
+
+        emiter_x = int(round(radius * np.cos(alpha) + center_x))
+        emiter_y = int(round(radius * np.sin(alpha) + center_y))
+
+        for i in range(n_detectors):
+
+            detector_angle = alpha + np.pi - (phi_angle / 2) + i * (phi_angle / (n_detectors - 1))
+
+            detcor_i_x = int(round(radius * np.cos(detector_angle) + center_x))
+            detcor_i_y = int(round(radius * np.sin(detector_angle) + center_y))
+
+            # Algorytm Bresenhama
+            coordinates = bresenham_algorith(emiter_x, emiter_y, detcor_i_x, detcor_i_y)
+            #Filtering of coords
+            coordinates=[(px,py) for (px,py) in coordinates if ((0<=px<width)and(0<=py<height))]
+            count = len(coordinates)
+            view_val_per_point = final_sinogram[step_idx, n_detectors - 1 - i]/count if count>0 else 0
+
+            for px, py in coordinates:
+                reconstructed[py,px] += view_val_per_point
+        
+        intermediate_reconstructed_img.append(reconstructed.copy())
+
+    return intermediate_reconstructed_img, reconstructed
+
 if __name__=="__main__":
     detector_numb:int=5
     viev_numb:int=10
-    sample_views=numpy.zeros(shape=(viev_numb,detector_numb,),dtype=numpy.float64)
-    sample_views[3,3]=2
-    sample_views[2,2]=5
-    sample_views=sample_views/sample_views.max()
-    image=cv2.imread("tomograf-obrazy\Kolo.jpg",0)
+
+    image=cv2.imread("tomograf-obrazy\Kropka.jpg",0)
 
     cv2.imshow("grey",image)
     cv2.waitKey(0)
@@ -154,13 +235,17 @@ if __name__=="__main__":
 
 
     # 3. Wywołanie funkcji
-    intermediate_list, final_sinogram = radon_transform(
+    intermediate_list, finsal_sinogram ,radius,(org_height,org_width)= radon_transform(
         image=image, 
         n_detectors=n_detectors, 
         phi_angle=phi_angle, 
         n_steps=n_steps, 
     )
     
-    cv2.imshow("grey",final_sinogram)
+    cv2.imshow("grey",finsal_sinogram)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    intermediate_list,final_reconstructed=back_projection(finsal_sinogram,n_detectors,phi_angle,n_steps,radius,org_height,org_width)
+    cv2.imshow("grey",final_reconstructed)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
