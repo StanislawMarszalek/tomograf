@@ -172,9 +172,12 @@ def radon_transform(image: np.ndarray, n_detectors: int, phi_angle: float, n_ste
                 # Zapisujemy wynik do sinogramu odwracając indeks detektora (n_detectors - 1 - i)
                 sinogram[step_idx, n_detectors - 1 - i] = line_sum / count
         
-        intermediate_sinograms.append(sinogram.copy()/np.max(sinogram))
+        intermediate_sinograms.append(sinogram.copy())
+    max_val=sinogram.max()
+    min_val=sinogram.min()
+    intermediate_sinograms=[(x-min_val)/(max_val-min_val) for x in intermediate_sinograms]
 
-    return intermediate_sinograms, sinogram/np.max(sinogram),r,(org_height,org_width)
+    return intermediate_sinograms, (sinogram-min_val)/(max_val-min_val),r,(org_height,org_width)
 
 
 def back_projection(final_sinogram: np.ndarray, n_detectors: int, phi_angle: float, n_steps: int,radius:int,original_img_height:int,original_img_width:int,filtering:bool=True)->tuple[list[np.ndarray], np.ndarray]:
@@ -185,6 +188,14 @@ def back_projection(final_sinogram: np.ndarray, n_detectors: int, phi_angle: flo
     intermediate_reconstructed_img = []
     # Kąty obrotu alfa
     alphas = np.linspace(0, 2 * np.pi, n_steps, endpoint=False)
+    if filtering:
+        elements=[0 if k%2==0 else (-4/(np.pi*np.pi))/(k*k) for k in range(-10,11)]
+        elements[10]=1
+        print(elements)
+        kernel:np.ndarray=np.array(elements)
+        for i in range(final_sinogram.shape[0]):
+
+            final_sinogram[i,:]=np.convolve(final_sinogram[i,:],kernel,"same")
 
 
     for step_idx, alpha in enumerate(alphas):
@@ -204,14 +215,16 @@ def back_projection(final_sinogram: np.ndarray, n_detectors: int, phi_angle: flo
             #Filtering of coords
             coordinates=[(px,py) for (px,py) in coordinates if ((0<=px<width)and(0<=py<height))]
             count = len(coordinates)
-            view_val_per_point = final_sinogram[step_idx, n_detectors - 1 - i]/count if count>0 else 0
+            view_val_per_point = final_sinogram[step_idx, n_detectors - 1 - i]#/count if count>0 else 0
 
             for px, py in coordinates:
                 reconstructed[py,px] += view_val_per_point
         
         intermediate_reconstructed_img.append(reconstructed.copy())
-
-    return intermediate_reconstructed_img, reconstructed
+    max_val=reconstructed.max()
+    min_val=reconstructed.min()
+    intermediate_reconstructed_img=[(x-min_val)/(max_val-min_val) for x in intermediate_reconstructed_img]
+    return intermediate_reconstructed_img, (reconstructed-min_val)/(max_val-min_val)
 
 if __name__=="__main__":
     detector_numb:int=5
@@ -246,6 +259,10 @@ if __name__=="__main__":
     cv2.waitKey(0)
     cv2.destroyAllWindows()
     intermediate_list,final_reconstructed=back_projection(finsal_sinogram,n_detectors,phi_angle,n_steps,radius,org_height,org_width)
+    cv2.imshow("grey",final_reconstructed)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    intermediate_list,final_reconstructed=back_projection(finsal_sinogram,n_detectors,phi_angle,n_steps,radius,org_height,org_width,False)
     cv2.imshow("grey",final_reconstructed)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
