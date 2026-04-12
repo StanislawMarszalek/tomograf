@@ -131,7 +131,22 @@ def prepare_padded_image(image: np.ndarray)->tuple[np.ndarray,int,tuple[int,int]
 
     return padded_image, r,(height,width)
 
-def radon_transform(image: np.ndarray, n_detectors: int, phi_angle: float, n_steps: int) -> tuple[list[np.ndarray], np.ndarray,int]:
+def radon_transform(image: np.ndarray, n_detectors: int, phi_angle: float, n_steps: int) -> tuple[list[np.ndarray], np.ndarray,int,tuple[int,int]]:
+    
+    """
+    Radon trasnformation to create a sinogram
+    
+    :param image: X-ray image to make a sinogram from
+    :type image: np.ndarray
+    :param n_detectors: Number of detecotrs
+    :type n_detectors: int
+    :param phi_angle: detector range
+    :type phi_angle: float
+    :param n_steps: Number of steps to do
+    :type n_steps: int
+    :return: Function returns intermediate sinograms ,the final singorma (All normalized),\nradius(length from the image center to the emiter) ,original image's height and width (as a tupe)
+    :rtype: tuple[list[ndarray], ndarray, int, tuple[int, int]]
+    """
     # Przygotowanie obrazu i promienia r
     padded_img, r,(org_height,org_width) = prepare_padded_image(image)
 
@@ -181,6 +196,30 @@ def radon_transform(image: np.ndarray, n_detectors: int, phi_angle: float, n_ste
 
 
 def back_projection(final_sinogram: np.ndarray, n_detectors: int, phi_angle: float, n_steps: int,radius:int,original_img_height:int,original_img_width:int,filtering:bool=True)->tuple[list[np.ndarray], np.ndarray]:
+    
+    """
+    Back projection to reconstruct the image
+    
+    :param final_sinogram: Sinogram the imaghe is made from
+    :type final_sinogram: np.ndarray
+    :param n_detectors: Number of detectors
+    :type n_detectors: int
+    :param phi_angle: Detectors range
+    :type phi_angle: float
+    :param n_steps: Number of steps
+    :type n_steps: int
+    :param radius: The radius of the image (length from the image center to the emiter)
+    :type radius: int
+    :param original_img_height: Height of the original image
+    :type original_img_height: int
+    :param original_img_width: Width of the original image
+    :type original_img_width: int
+    :param filtering: Switch to decide if filtering should be applied or not (default:True)
+    :type filtering: bool
+    :return: Function returns intermediate images and the final image
+    :rtype: tuple[list[ndarray], ndarray]
+    """
+    
     height, width = original_img_height,original_img_width
     center_x, center_y = width // 2, height // 2
 
@@ -189,13 +228,24 @@ def back_projection(final_sinogram: np.ndarray, n_detectors: int, phi_angle: flo
     # Kąty obrotu alfa
     alphas = np.linspace(0, 2 * np.pi, n_steps, endpoint=False)
     if filtering:
-        elements=[0 if k%2==0 else (-4/(np.pi*np.pi))/(k*k) for k in range(-10,11)]
-        elements[10]=1
-        print(elements)
-        kernel:np.ndarray=np.array(elements)
-        for i in range(final_sinogram.shape[0]):
+        # Tworzenie kernala
+        k_values = np.arange(-10, 11)
+        kernel = np.zeros(len(k_values))
 
-            final_sinogram[i,:]=np.convolve(final_sinogram[i,:],kernel,"same")
+        for i, k in enumerate(k_values):
+            if k == 0:
+                kernel[i] = 1
+            elif k % 2 == 0:
+                kernel[i] = 0
+            else:
+                kernel[i] = (-4 / (np.pi**2)) / (k**2)
+
+        filtered_sinogram = np.zeros_like(final_sinogram)
+
+        for i in range(final_sinogram.shape[0]):
+            filtered_sinogram[i, :] = np.convolve(final_sinogram[i, :], kernel, mode="same")
+    else:
+        filtered_sinogram = final_sinogram.copy()
 
 
     for step_idx, alpha in enumerate(alphas):
@@ -215,7 +265,7 @@ def back_projection(final_sinogram: np.ndarray, n_detectors: int, phi_angle: flo
             #Filtering of coords
             coordinates=[(px,py) for (px,py) in coordinates if ((0<=px<width)and(0<=py<height))]
             count = len(coordinates)
-            view_val_per_point = final_sinogram[step_idx, n_detectors - 1 - i]#/count if count>0 else 0
+            view_val_per_point = filtered_sinogram [step_idx, n_detectors - 1 - i]#/count if count>0 else 0
 
             for px, py in coordinates:
                 reconstructed[py,px] += view_val_per_point
@@ -259,10 +309,10 @@ if __name__=="__main__":
     cv2.waitKey(0)
     cv2.destroyAllWindows()
     intermediate_list,final_reconstructed=back_projection(finsal_sinogram,n_detectors,phi_angle,n_steps,radius,org_height,org_width)
-    cv2.imshow("grey",final_reconstructed)
+    cv2.imshow("Filter",final_reconstructed)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
     intermediate_list,final_reconstructed=back_projection(finsal_sinogram,n_detectors,phi_angle,n_steps,radius,org_height,org_width,False)
-    cv2.imshow("grey",final_reconstructed)
+    cv2.imshow("NO Filter",final_reconstructed)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
