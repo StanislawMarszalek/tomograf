@@ -45,6 +45,6 @@ def normalize_img(image:np.ndarray)->np.ndarray:
     :rtype: ndarray
     """
     image = np.maximum(image, 0)
-    image = (image / np.quantile(image, 0.990)).astype(np.float64) if np.quantile(image, 0.990)!=0 else image/np.max(image)
+    image = (image / np.quantile(image, 0.990)).astype(np.float64) if np.quantile(image, 0.990)!=0 else image
     image = np.minimum(image, 1)
     return image
