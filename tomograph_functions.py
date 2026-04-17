@@ -183,8 +183,7 @@ def back_projection(sinogram: np.ndarray,
 
         intermediate_recon.append(reconstructed.copy())
 
-    return intermediate_recon, reconstructed  
-
+    return intermediate_recon, reconstructed
 
 
 if __name__=="__main__":
