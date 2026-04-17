@@ -41,7 +41,7 @@ def bresenham_algorithm(x0: int, y0: int, x1: int, y1: int) -> list[tuple[int, i
     return line_coords
 
 
-def radon_trnsform(image: np.ndarray,
+def radon_transform(image: np.ndarray,
                    numb_detectors: int = 180,
                    step: float = 1,
                    angular_spread: float = 90) -> tuple[list[np.ndarray], np.ndarray]:
@@ -192,7 +192,7 @@ if __name__=="__main__":
     show_img(img, "Readed img")
 
     # Creating sinogram
-    inter_sins, sin = radon_trnsform(img, 180, 1)
+    inter_sins, sin = radon_transform(img, 180, 1)
     show_img(sin, "Sinogram unfiltered")
 
     #Filtering
