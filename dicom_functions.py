@@ -88,7 +88,7 @@ if __name__=="__main__":
     for name,value in data.items():
         print(f"{name}: {value}")
     img=(img-np.min(img))/(np.max(img)-np.min(img))
-    save_dicom_file("./tst.dcm",img,"Ello^Bridget","","O","018M","","Hello there")
+    save_dicom_file("./tst.dcm",img,"Kowalski^Jan","","O","018M","","test 123")
     img,data=read_dicom_file("./tst.dcm")
     for name,value in data.items():
         print(f"{name}: {value}")
