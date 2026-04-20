@@ -38,7 +38,27 @@ def read_dicom_file(pathfile:str)->tuple[np.ndarray,dict[str,str]]:
 
 def save_dicom_file(file_path: str, image: np.ndarray, patient_name: str, patient_id: str,patient_sex:str,patient_age:str, study_date: str, comments: str)->None:
     #Image must be nromalized before apllying clip
-
+    """
+    Save given values and given image as a dicon file (values must be given in a appropriate format )
+    
+    :param file_path: Path where the dicom file will be saved
+    :type file_path: str
+    :param image: Image to save in the dicom file (image must be normalized)
+    :type image: np.ndarray
+    :param patient_name: Name of the patient 
+    :type patient_name: str
+    :param patient_id: ID of the patients
+    :type patient_id: str
+    :param patient_sex: Gender of the patient
+    :type patient_sex: str
+    :param patient_age: Age of the patient
+    :type patient_age: str
+    :param study_date: Date of the examination
+    :type study_date: str
+    :param comments: Comments about the examination
+    :type comments: str
+    """
+    #Image must be normalized before apllying clip
     img16 = np.clip(image * 65535.0, 0, 65535).astype(np.uint16)
 
     file_meta = Dataset()
@@ -83,7 +103,7 @@ def save_dicom_file(file_path: str, image: np.ndarray, patient_name: str, patien
     data_set.save_as(file_path, write_like_original=False)
 
 if __name__=="__main__":
-    img,data=read_dicom_file("tomograf-dicom\Kolo.dcm")
+    img,data=read_dicom_file("./SADDLE_PE-large.dcm_updated_2026_4_19_21_5.dcm")
     show_img(img,"Read from dicom file")
     for name,value in data.items():
         print(f"{name}: {value}")
