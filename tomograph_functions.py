@@ -113,7 +113,7 @@ def filtr_sinogram(sinogram:np.ndarray)->np.ndarray:
     :return: Filtered version of the sinogram
     :rtype: ndarray
     """
-    kernel_list=[i for i in range(-10,11)]
+    kernel_list=list(range(-10, 11))
     for idx,k in enumerate(kernel_list):
         if k == 0:
             kernel_list[idx] = 1

@@ -1,11 +1,10 @@
-import numpy as np
 import datetime as dt
-from helpers import show_img
-
+import numpy as np
 from pydicom import dcmread
 from pydicom.dataset import Dataset, FileDataset
 from pydicom.filewriter import validate_file_meta
 from pydicom.uid import ExplicitVRLittleEndian, SecondaryCaptureImageStorage, generate_uid
+from helpers import show_img
 
 def read_dicom_file(pathfile:str)->tuple[np.ndarray,dict[str,str]]:
     """
@@ -36,10 +35,14 @@ def read_dicom_file(pathfile:str)->tuple[np.ndarray,dict[str,str]]:
     return image,meta_data
 
 
-def save_dicom_file(file_path: str, image: np.ndarray, patient_name: str, patient_id: str,patient_sex:str,patient_age:str, study_date: str, comments: str)->None:
+def save_dicom_file(file_path: str, image: np.ndarray,
+                    patient_name: str, patient_id: str,
+                    patient_sex:str,patient_age:str,
+                    study_date: str, comments: str)->None:
     #Image must be nromalized before apllying clip
     """
-    Save given values and given image as a dicon file (values must be given in a appropriate format )
+    Save given values and given image as a dicon file 
+    (values must be given in a appropriate format )
     
     :param file_path: Path where the dicom file will be saved
     :type file_path: str
@@ -103,12 +106,12 @@ def save_dicom_file(file_path: str, image: np.ndarray, patient_name: str, patien
     data_set.save_as(file_path, write_like_original=False)
 
 if __name__=="__main__":
-    img,data=read_dicom_file("./SADDLE_PE-large.dcm_updated_2026_4_19_21_5.dcm")
+    img,data_test=read_dicom_file("./SADDLE_PE-large.dcm_updated_2026_4_19_21_5.dcm")
     show_img(img,"Read from dicom file")
-    for name,value in data.items():
+    for name,value in data_test.items():
         print(f"{name}: {value}")
     img=(img-np.min(img))/(np.max(img)-np.min(img))
     save_dicom_file("./tst.dcm",img,"Kowalski^Jan","","O","018M","","test 123")
-    img,data=read_dicom_file("./tst.dcm")
-    for name,value in data.items():
+    img,data_test=read_dicom_file("./tst.dcm")
+    for name,value in data_test.items():
         print(f"{name}: {value}")
